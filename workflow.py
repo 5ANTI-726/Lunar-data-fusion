@@ -1,5 +1,6 @@
 from PIL import Image, ImageFilter
 from time import sleep
+import platform
 import os
 
 #Probable parent file: '/Users/santi/Desktop/Near infrared imaging, site 1'

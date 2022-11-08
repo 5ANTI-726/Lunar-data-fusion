@@ -93,14 +93,20 @@ def cut(longitude, latitude, sitenumber, source_image, origin):
     #Save the 'sink' image to the appropriate directory. The first important parent
     #is what region of the moon it belongs to (e.g., 512_00N_30N_000_045).
     #The second part is the site number, which is given when calling the cut method.
-    destination = origin + "512_30S_00S_000_045/" + "SLDEM2015, site " + str(sitenumber) + "/"
-    os.mkdir(destination)
+    reference_name = source_image[-23:-5] + "/"
+    destination = origin + reference_name + "SLDEM2015, site " + str(sitenumber) + "/"
+    try:
+        os.mkdir(destination)
+    except:
+        pass
+
     #Information about the parameters used to cut the 'sink' image are coded in
     #the file name: the first number is the resolution in pixels per degree of
     #lunar surface, the second/third numbers are first/last latitude (south/north),
     #and the fourth/fifth numbers are first/last longitude (west/east).
+    northsouth = source_image[-13]
     sink.save(destination + 'SLDEM2015_' + str(pixpdeg)
-    + '_' + namedigits(latitude) + 'S_' + namedigits(latitude+yscale) + 'S_' +
+    + '_' + namedigits(latitude) + northsouth + '_' + namedigits(latitude+yscale) + northsouth + '_' +
     namedigits(longitude) + '_' + namedigits(longitude+xscale) + '.png')
 
     #Confirm the last line, the saving of the 'sink' image, was executed.
