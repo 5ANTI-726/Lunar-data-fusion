@@ -28,8 +28,8 @@ def cut(longitude, latitude, sitenumber, source):
 
     #The coordinates of the top left corner of the source image. Positive 'y'
     #indexes are downward and positive 'x' indexes are rightward.
-    sourcelong = 0.0
-    sourcelat = 30.0
+    sourcelong = float(source[-11:-9])
+    sourcelat = float(source[-15:-14])
 
     #Pixel resolution selects pxpdeg pixels per degree of lunar surface.
     #The scale variables allow for selection of more than one degree in either
@@ -42,7 +42,7 @@ def cut(longitude, latitude, sitenumber, source):
     #the desired field in the source image, from which one only captures
     #'i' and 'j' numbers of pixels in either direction.
     x = (longitude - sourcelong)*pixpdeg
-    y = (sourcelat - latitude - 1)*pixpdeg
+    y = abs(sourcelat - latitude - 1)*pixpdeg
     #The register array is for saving intensity values to allow for
     #appropriate scaling of pixel brightness.
     register = []
