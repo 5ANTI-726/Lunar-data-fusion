@@ -1,6 +1,5 @@
 from PIL import Image, ImageFilter
 from time import sleep
-import platform
 import os
 
 #Probable parent file: '/Users/santi/Desktop/Near infrared imaging, site 1'
@@ -187,7 +186,7 @@ def preprocessing(origin):
                                 if file.endswith(".tif") or file.endswith(".png"):
                                     im = Image.open(parent_directory + file)
                                     processed = dead_pixel_fix(dead_pixel_fix(dead_pixel_fix(dead_pixel_fix(im))))
-                                    processed.save(destination_directory + '/' + file[:-4] + '_processed.tif')
+                                    processed.save(destination_directory + '/' + file[:-4] + '_processed.png')
 
 def over80_filter(origin):
     #Input: The project's file; the "Original data and scripts" file has to be
@@ -229,7 +228,7 @@ def over80_filter(origin):
 
                                     completeness = (width*height - dead_pixel_count) / (width*height)
                                     if completeness >= 0.8:
-                                        im.save(destination_directory + file[:-4] + '_over80.tif')
+                                        im.save(destination_directory + file[:-4] + '_over80.png')
 
 
 origin = "/Users/santi/Documents/Semestre 1-2-3/MR3038- Estancia de investigación/Proyectos/Data fusion in lunar environment/"
