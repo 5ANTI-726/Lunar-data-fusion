@@ -65,8 +65,8 @@ def cut(longitude, latitude, sitenumber, source_image, origin):
     #pixels to the final image object in 8-bit format, we only have to access
     #the reduced 'intermediate' file.
     intermediate = Image.new(source.mode, (xscale*pixpdeg, yscale*pixpdeg))
-    print("i will range from 0 to " + str(xscale*pixpdeg))
-    print("k will range from 0 to " + str(yscale*pixpdeg))
+    #print("i will range from " + str(x) + " to " + str(x+xscale*pixpdeg))
+    #print("k will range from " + str(y) + " to " + str(y+ yscale*pixpdeg))
     for i in range(0,xscale*pixpdeg):
         for k in range(0,yscale*pixpdeg):
             #print("X: " + str(x))
@@ -93,7 +93,7 @@ def cut(longitude, latitude, sitenumber, source_image, origin):
     #Save the 'sink' image to the appropriate directory. The first important parent
     #is what region of the moon it belongs to (e.g., 512_00N_30N_000_045).
     #The second part is the site number, which is given when calling the cut method.
-    reference_name = source_image[-23:-5] + "/"
+    reference_name = source_image[-23:-4] + "/"
     destination = origin + reference_name + "SLDEM2015, site " + str(sitenumber) + "/"
     try:
         os.mkdir(destination)
