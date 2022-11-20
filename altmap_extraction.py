@@ -118,7 +118,7 @@ Image.MAX_IMAGE_PIXELS = 353894400
 origin = "/Users/santi/Documents/Semestre 1-2-3/MR3038- Estancia de investigación/Proyectos/Data fusion in lunar environment/Original data and scripts/"
 
 #Specify where the monster source file is.
-source = origin + "Global maps/SLDEM2015_512_30S_00S_000_045.JP2"
+source = origin + "Global maps/SLDEM2015_512_00N_30N_045_090.JP2"
 #Pass the first longitude (west/east), the first latitude (south/north), append
 #the site number.
-cut(22, -11, 4, source, origin)
+cut(68, 11, 7, source, origin)
