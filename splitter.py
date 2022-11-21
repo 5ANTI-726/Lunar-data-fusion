@@ -1,10 +1,12 @@
 from PIL import Image, ImageFilter
+from playsound import playsound
+import os.path as path
 from time import sleep
 import math
 import os
 
 def id_site(string):
-    return string[string.find('site') + 5]
+    return string[string.find('site') + 5: string.find('/')]
 
 def getfolders():
     #Input: None.
@@ -35,20 +37,26 @@ def getfolders():
     #Return the final array of folders, split as different elements, without backslashes.
     return c_folders
 
-def cutter(parent_folder_path, image, target):
+def cutter(source, target):
     #Input: Parent folder path, the filename of the image of interest, and
     #the number of output images.
-    #Output: Tuple with the 'target' number of output images.
+    #Output: Array with the 'target' number of output images.
 
-    #Split source 'image' in the 'parent_folder_path' into 'target' number of sub images.
-
+    source = source.resize((420, 420))
     tsqrt = int(math.sqrt(target))
     minisize = int(420/tsqrt)
 
-    #Resize everything into 420 because the numbers 1 through 7 are factors.
-    source = Image.open(parent_folder_path + '/' + image).resize((420,420))
+    output_1 = Image.new('L', (minisize,minisize), color = 0)
+    output_2 = Image.new('L', (minisize,minisize), color = 0)
+    output_3 = Image.new('L', (minisize,minisize), color = 0)
+    output_4 = Image.new('L', (minisize,minisize), color = 0)
+    output_5 = Image.new('L', (minisize,minisize), color = 0)
+    output_6 = Image.new('L', (minisize,minisize), color = 0)
+    output_7 = Image.new('L', (minisize,minisize), color = 0)
+    output_8 = Image.new('L', (minisize,minisize), color = 0)
+    output_9 = Image.new('L', (minisize,minisize), color = 0)
 
-    output = []
+    meta = [output_1, output_2, output_3, output_4, output_5, output_6, output_7, output_8, output_9]
 
     for l in range(0,tsqrt):
         for i in range(0,tsqrt):
@@ -56,14 +64,12 @@ def cutter(parent_folder_path, image, target):
             for j in range(0,minisize):
                 for k in range(0,minisize):
                     #DEBUGGING
-                    #print(str((i, j, j, k)))
+                    #print(str((l, i, j, k)))
                     #print(str((i*minisize + j, l*minisize + k)))
-                    im.putpixel((j,k), source.getpixel((i*minisize + j, l*minisize + k)))
-            output.append(im)
+                    meta[tsqrt*l + i].putpixel((j,k), source.getpixel((i*minisize + j, l*minisize + k)))
+    return meta
 
-    return output
-
-def split(parent_folder_path, split_num, test_train_folder, folder_index):
+def split(origin, split_num, destination_parent):
     #Input: Source folder, the number of images to create, the folder to store
     #the images in, and an index for the amount of folders processed so far.
     #Output: None.
@@ -72,31 +78,32 @@ def split(parent_folder_path, split_num, test_train_folder, folder_index):
     #saves the resulting images according to their output order within separate folders.
     #This requires that the images corresponding to the same subareas (i.e. quadrants)
     #come out with the same index each time and are saved in the correct 'Set #' file.
-    print(parent_folder_path)
-    site  = id_site(parent_folder_path)
 
-    for image_name in os.listdir(parent_folder_path):
-        if image_name.endswith(".tif") or image_name.endswith(".png"):
-            #The cutter method returns a tuple storing all iamges created from
-            #the Image object created from 'image_name'.
-            images = cutter(parent_folder_path, image_name, split_num)
-            for i in range(0, split_num):
-                set = "/Set " + str(folder_index*split_num + i) + "/"
-                new_file_name = str(test_train_folder + set + image_name[:-4] + '_sub_' + str(i) + image_name[-4:])
-                try:
-                    os.mkdir(test_train_folder + '/Set ' + str(folder_index*split_num + i))
-                except:
-                    print("Set parent file already created.")
-                images[i].save(new_file_name)
+    for item in os.listdir(origin):
+        if item == "Preselected data":
+            #print(origin + item)
+            item += "/"
+            if item[0] != ".":
+                for site_data in  os.listdir(origin + item):
+                    #print(origin + item + site_data)
+                    site_data += "/"
+                    if site_data[0] != ".":
+                        site_num = int(id_site(site_data))
+                        parent_directory = origin + item + site_data
+                        destination_directory = destination_parent + '/Set '
 
-def folder_batch_preprocessing(folders, split_num, test_train_folder):
-    #Input: List of folders, number of images to create, and the folder where we
-    #will store test/train images (not sorted into the two categories yet).
-    #Output: None.
-
-    #This method only calls for the cutting of each image in a site.
-    for i in range(0,len(folders)):
-        split(folders[i], split_num, test_train_folder, i)
+                        print("Collimating laser beams in " + site_data)
+                        for file in os.listdir(parent_directory):
+                            if file.endswith(".tif") or file.endswith(".png"):
+                                im = Image.open(parent_directory + file)
+                                meta = cutter(im, split_num)
+                                for i in range(0,split_num):
+                                    set_path = destination_directory + str(split_num*(site_num-1) + i)
+                                    if not path.isdir(set_path + '/'):
+                                        os.mkdir(set_path + '/')
+                                    meta[i].save(set_path + '/' + file[:-4] + '_' + str(i) + '.png')
 
 test_train_folder = '/Users/santi/Documents/Semestre 1-2-3/MR3038- Estancia de investigación/Proyectos/Data fusion in lunar environment/Split data'
-folder_batch_preprocessing(getfolders(), 4, test_train_folder)
+origin = "/Users/santi/Documents/Semestre 1-2-3/MR3038- Estancia de investigación/Proyectos/Data fusion in lunar environment/"
+
+split(origin , 4, test_train_folder)

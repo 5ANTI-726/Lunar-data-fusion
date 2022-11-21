@@ -1,9 +1,9 @@
 from PIL import Image, ImageFilter
 from playsound import playsound
+import os.path as path
 from time import sleep
 import numpy
 import os
-import os.path as path
 
 #Probable parent file: '/Users/santi/Desktop/Near infrared imaging, site 1'
 
@@ -175,11 +175,10 @@ def mosaic_create(origin, replace_mosaics):
                     x = register[i]
                     temp.append(quadratic_map(a, c, d, x))
                 average = sum(temp)/len(temp)
-                averages.append(abs(average - 120))
+                averages.append(abs(average - 100))
 
             p = averages.index(min(averages)) + 116
-            print("P: " + str(p))
-            sleep(3)
+            #print("P: " + str(p))
             a = (p*q - ceiling + 256*floor - 128*255)/(q*(128^2+ceiling*floor) - 128*(ceiling^2 + floor^2))
             c = 255/q - a*(ceiling + floor)
             d = 1 - a*ceiling**2 - c*floor
@@ -224,7 +223,7 @@ def mosaic_create(origin, replace_mosaics):
                         pixel = int(source.getpixel((i, j)) * (128/average))
                         sink_1.putpixel( (i, j), pixel )
                     else:
-                        sink_1.putpixel( (i, j), map(m, b, pixel) )
+                        sink_1.putpixel( (i, j), linear_map(m, b, pixel) )
 
             #Linear mapping option
             sink_2 = Image.new(source.mode, (x_limit, y_limit))
@@ -234,16 +233,16 @@ def mosaic_create(origin, replace_mosaics):
                     sink_2.putpixel( (i, j), linear_map(m, b, pixel) )
 
             #Quadratic mapping option
-            #a, c, d = acd(floor, ceiling, register)
-            #sink_3 = Image.new(source.mode, (x_limit, y_limit))
-            #for i in range(0, x_limit):
-                #for j in range(0, y_limit):
-                    #pixel = source.getpixel((i, j))
-                    #sink_3.putpixel( (i, j), quadratic_map(a, c, d, pixel) )
+            a, c, d = acd(floor, ceiling, register)
+            sink_3 = Image.new(source.mode, (x_limit, y_limit))
+            for i in range(0, x_limit):
+                for j in range(0, y_limit):
+                    pixel = source.getpixel((i, j))
+                    sink_3.putpixel( (i, j), quadratic_map(a, c, d, pixel) )
 
-            return sink_1, sink_2
+            return sink_1, sink_2, sink_3
         #If the register is empty, return the original image
-        return source, source
+        return source, source, source
 
     for item in os.listdir(origin):
         if item == "Original data and scripts":
@@ -254,7 +253,7 @@ def mosaic_create(origin, replace_mosaics):
                 if area[0] != ".":
                     for site_data in os.listdir(origin + item + area):
                         site_data += "/"
-                        if site_data[-11:] == "_processed/":
+                        if site_data[-11:] == "_processed/" and not os.exists(origin + item + area + site_data + "mosaic_1.png"):
                             parent_directory = origin + item + area + site_data
                             destination_directory = parent_directory
 
@@ -273,28 +272,35 @@ def mosaic_create(origin, replace_mosaics):
 
                             basis_1 = Image.new('L', (training_image_size,training_image_size), color = 0)
                             basis_2 = Image.new('L', (training_image_size,training_image_size), color = 0)
+                            basis_3 = Image.new('L', (training_image_size,training_image_size), color = 0)
 
-                            for index in quality_order[round(len(quality_order)/2):]:
+                            for index in quality_order:
                                 #Add to canvas in order of quality.
-                                next_image_1, next_image_2 = contrast( Image.open( parent_directory + tiff_list[quality_order[index]] ) .resize((training_image_size,training_image_size)))
+                                next_image_1, next_image_2, next_image_3 = contrast( Image.open( parent_directory + tiff_list[quality_order[index]] ) .resize((training_image_size,training_image_size)))
 
                                 for x in range(0,training_image_size):
                                     for y in range(0,training_image_size):
                                         new_pixel_1 = next_image_1.getpixel((x,y))
                                         new_pixel_2 = next_image_2.getpixel((x,y))
+                                        new_pixel_3 = next_image_3.getpixel((x,y))
                                         if new_pixel_1 > 10:
                                             basis_1.putpixel((x,y), new_pixel_1)
                                         if new_pixel_2 > 10:
                                             basis_2.putpixel((x,y), new_pixel_2)
+                                        if new_pixel_3 > 10:
+                                            basis_3.putpixel((x,y), new_pixel_3)
 
                             if replace_mosaics:
                                 os.remove(destination_directory + 'mosaic_1.png')
                                 os.remove(destination_directory + 'mosaic_2.png')
+                                os.remove(destination_directory + 'mosaic_3.png')
 
                             #Save first mosaic option
                             basis_1.save(destination_directory + 'mosaic_1.png')
                             #Save second mosaic option
                             basis_2.save(destination_directory + 'mosaic_2.png')
+                            #Save third mosaic option
+                            basis_3.save(destination_directory + 'mosaic_3.png')
 
 def over80_filter(origin):
     #Input: The project's file; the "Original data and scripts" file has to be
@@ -410,6 +416,12 @@ def preprocessing(origin):
                         if (site_data[0:4] == "Near" or site_data[0:5] == "Ultra") and site_data.find("_") == -1:
                             parent_directory = origin + item + area + site_data
                             destination_directory = parent_directory[0:-1] + "_processed/"
+                            prefix = ''
+                            if site_data[0:4] == "Near":
+                                prefix = "NIR"
+                            elif site_data[0:5] == "Ultra":
+                                prefix = "UVV"
+
 
                             #Detect if folder already exists. If true, skip.
                             if not path.isdir(destination_directory):
@@ -419,7 +431,7 @@ def preprocessing(origin):
                                     if file.endswith(".tif") or file.endswith(".png"):
                                         im = Image.open(parent_directory + file)
                                         processed = dead_pixel_fix(dead_pixel_fix(dead_pixel_fix(dead_pixel_fix(im))))
-                                        processed.resize((training_image_size,training_image_size)).save(destination_directory + '/' + file[:-4] + '_processed.png')
+                                        processed.resize((training_image_size,training_image_size)).save(destination_directory + '/' + prefix + file[:-4] + '_processed.png')
 
 
 origin = "/Users/santi/Documents/Semestre 1-2-3/MR3038- Estancia de investigación/Proyectos/Data fusion in lunar environment/"
@@ -437,7 +449,7 @@ print("Begin creating mosaics of site data...")
 mosaic_create(origin, replace_mosaics)
 alarm(alarmV)
 
-#print("")
-#print("Begin filtering out images with less than 80% content...")
-#over80_filter(origin)
-#alarm(alarmV)
+print("")
+print("Begin filtering out images with less than 80% content...")
+over80_filter(origin)
+alarm(alarmV)
