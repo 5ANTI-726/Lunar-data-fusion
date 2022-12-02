@@ -250,7 +250,13 @@ def mosaic_create(origin, replace_mosaics):
                 if area[0] != ".":
                     for site_data in os.listdir(origin + item + area):
                         site_data += "/"
-                        if site_data[-11:] == "_processed/" and not path.exists(origin + item + area + site_data + "mosaic_1.png"):
+                        prefix = ''
+                        if site_data[0:4] == "Near":
+                            prefix = "NIR"
+                        elif site_data[0:5] == "Ultra":
+                            prefix = "UVV"
+
+                        if site_data[-11:] == "_processed/" and not path.exists(origin + item + area + site_data + prefix + "mosaic_1.png"):
                             parent_directory = origin + item + area + site_data
                             destination_directory = parent_directory
 
@@ -290,16 +296,16 @@ def mosaic_create(origin, replace_mosaics):
                                             basis_3.putpixel((x,y), new_pixel_3)
 
                             if replace_mosaics:
-                                os.remove(destination_directory + 'mosaic_1.png')
-                                os.remove(destination_directory + 'mosaic_2.png')
-                                os.remove(destination_directory + 'mosaic_3.png')
+                                os.remove(destination_directory + prefix + 'mosaic_1.png')
+                                os.remove(destination_directory + prefix + 'mosaic_2.png')
+                                os.remove(destination_directory + prefix + 'mosaic_3.png')
 
                             #Save first mosaic option
-                            basis_1.save(destination_directory + 'mosaic_1.png')
+                            basis_1.save(destination_directory + prefix + 'mosaic_1.png')
                             #Save second mosaic option
-                            basis_2.save(destination_directory + 'mosaic_2.png')
+                            basis_2.save(destination_directory + prefix + 'mosaic_2.png')
                             #Save third mosaic option
-                            basis_3.save(destination_directory + 'mosaic_3.png')
+                            basis_3.save(destination_directory + prefix + 'mosaic_3.png')
 
 def over80_filter(origin):
     #Input: The project's file; the "Original data and scripts" file has to be
@@ -540,7 +546,7 @@ def prefix_labeller(origin):
                                             #print("Incorrect label:" + file)
                                             #print("Location:" + parent_directory)
 
-origin = "/Users/santi/Documents/Semestre 1-2-3/MR3038- Estancia de investigación/Proyectos/Data fusion in lunar environment/"
+origin = "/Users/santi/Documents/Semestre 1-2-3/MR3038- Estancia de investigación/Proyectos/Data fusion in lunar environment/Data workspace/"
 training_image_size = 420
 alarmV = True
 replace_mosaics = False
