@@ -31,4 +31,4 @@ Your parent file should have the following structure. Keep in ming the "N site f
       ↓
       Any newly downloaded site data files
       
-      View file 2D structure at: <img width="780" alt="File structure" src="https://user-images.githubusercontent.com/73500228/206111168-b211438a-4a26-4cef-8178-1cd15c99b00f.png">
+View file 2D structure at https://user-images.githubusercontent.com/73500228/206111168-b211438a-4a26-4cef-8178-1cd15c99b00f.png
