@@ -2,8 +2,7 @@ from PIL import Image, ImageFilter
 from playsound import playsound
 import os.path as path
 from time import sleep
-import numpy
-import os
+import numpy, os, shutil
 
 #Probable parent file: '/Users/santi/Desktop/Near infrared imaging, site 1'
 
@@ -242,7 +241,7 @@ def mosaic_create(origin, replace_mosaics):
 
     threshold = 1
     for item in os.listdir(origin):
-        if item == "Original data and scripts":
+        if item == "Original data":
             #print(origin + item)
             item += "/"
             for area in  os.listdir(origin + item):
@@ -308,7 +307,7 @@ def mosaic_create(origin, replace_mosaics):
                             basis_3.save(destination_directory + prefix + 'mosaic_3.png')
 
 def over80_filter(origin):
-    #Input: The project's file; the "Original data and scripts" file has to be
+    #Input: The project's file; the "Original data" file has to be
     #an immediate child.
     #Output: None.
 
@@ -318,7 +317,7 @@ def over80_filter(origin):
     #"_processed".
 
     for item in os.listdir(origin):
-        if item == "Original data and scripts":
+        if item == "Original data":
             #print(origin + item)
             item += "/"
             for area in  os.listdir(origin + item):
@@ -352,7 +351,7 @@ def over80_filter(origin):
                                             im.save(destination_directory + file[:-4] + '_over80.png')
 
 def preprocessing(origin):
-    #Input: The project's file; the "Original data and scripts" file has to be
+    #Input: The project's file; the "Original data" file has to be
     #an immediate child.
     #Output: None.
 
@@ -487,15 +486,14 @@ def preprocessing(origin):
         return im
 
     for item in os.listdir(origin):
-        if item == "Original data and scripts":
-            #print(origin + item)
+        if item == "Original data":
             item += "/"
             for area in  os.listdir(origin + item):
-                area += "/"
                 if area[0] != ".":
+                    area += "/"
                     for site_data in os.listdir(origin + item + area):
-                        site_data += "/"
                         if (site_data[0:4] == "Near" or site_data[0:5] == "Ultra") and site_data.find("_") == -1:
+                            site_data += "/"
                             parent_directory = origin + item + area + site_data
                             destination_directory = parent_directory[0:-1] + "_processed/"
                             prefix = ''
@@ -503,7 +501,6 @@ def preprocessing(origin):
                                 prefix = "NIR"
                             elif site_data[0:5] == "Ultra":
                                 prefix = "UVV"
-
 
                             #Detect if folder already exists. If true, skip.
                             if not path.isdir(destination_directory):
@@ -516,41 +513,251 @@ def preprocessing(origin):
                                         processed = dead_pixel_fix(dead_pixel_fix(dead_pixel_fix(dead_pixel_fix(im, mask), mask), mask), mask)
                                         processed.resize((training_image_size,training_image_size)).save(destination_directory + '/' + prefix + file[:-4] + '_processed.png')
 
-def prefix_labeller(origin):
+def all_alts(origin):
+    #Input: The project's file; the "Original data" file has to be
+    #an immediate child.
+    #Output: None.
+
+    def coordinates(parent, file):
+        #Input:
+        #Output:
+
+        def id_site(string):
+            return string[string.find('site') + 5: -1]
+
+        def expand(number, div, dig):
+            string1 = str(int(abs(div*(number//div))))
+            string2 = str(int(abs(div*(number//div + 1))))
+            while len(string1) < dig:
+                string1 = '0' + string1
+            while len(string2) < dig:
+                string2 = '0' + string2
+
+            return string1, string2
+
+
+        target_long = ''
+        target_lat = ''
+        with open(parent + file, 'r') as content:
+            content = content.readlines()
+            line6 = content[6].strip() + " "
+            target_lat = float(line6[line6.find("=") + 2:-1])
+            line8 = content[8].strip() + " "
+            target_long = float(line8[line8.find("=") + 2:-1])
+        if target_long < 0:
+            target_long += 360
+
+        f_lat, s_lat = expand(target_lat, 30, 2)
+        f_long, s_long = expand(target_long, 45, 3)
+
+        northsouth = ''
+        if target_lat < 0:
+            NS = 'S'
+        else:
+            NS = 'N'
+
+        name = '512_' + f_lat + NS + '_' + s_lat + NS + '_'  + f_long + '_' + s_long
+        return target_long, target_lat, id_site(parent), name
+
+    def altmap(target_long, target_lat, site_number, name, origin, destination_directory):
+        def map(floor,ceiling,value):
+            #Map unsigned 32-bit values to unsigned 8-bit
+            mapped = int(round(256*(value - floor)/(ceiling - floor)))
+            return mapped
+
+        def namedigits(number):
+            #Maintain the three digit format for noting latitude/longitude. We do not
+            #do different numbers of digits for the sake of universality of the method.
+            if number < 10:
+                name = '00' + str(number)
+            elif number < 100:
+                name = '0' + str(number)
+            else:
+                name = str(number)
+
+            return name
+
+        def cut(longitude, latitude, sitenumber, source_image, origin, name, destination_directory):
+            #Input: Coordiantes of minimum longitude and latitude of the site area,
+            #the site number, the monster file filepath, and the parent folder
+            #("Original data and scripts").
+            #Output: None.
+
+            #
+            source = Image.open(source_image)
+            #print("This image is: " + str(source.size[0]) + " x " + str(source.size[1]))
+
+
+            #The coordinates of the top left corner of the source image. Positive 'y'
+            #indexes are downward and positive 'x' indexes are rightward.
+            sourcelong = float(source_image[-11:-8])
+            #print("Source corner longitude: " + str(sourcelong))
+            sourcelat = float(source_image[-15:-13])
+            #print("Source corner latitude: " + str(sourcelat))
+
+            if longitude < 0:
+                longitude = 360 + longitude
+
+            #print("Target corner longitude: " + str(longitude))
+            #print("Target corner latitude: " + str(latitude))
+
+            #Pixel resolution selects pxpdeg pixels per degree of lunar surface.
+            #The scale variables allow for selection of more than one degree in either
+            #lontidunial or latitudinal directions.
+            pixpdeg = 512
+            xscale = 1
+            yscale = 1
+
+            #The 'x' and 'y' variables correctly index the top left corner of
+            #the desired field in the source image, from which one only captures
+            #'i' and 'j' numbers of pixels in either direction.
+            x = int(abs(longitude - sourcelong)*pixpdeg) + 1
+            y = int(abs(sourcelat - latitude - 1)*pixpdeg)
+            #The register array is for saving intensity values to allow for
+            #appropriate scaling of pixel brightness.
+            register = []
+
+            #'intermediate' is an image object with the same 32-bit mode as the source
+            #image. Now we only access the monster source file once. When copying scaled
+            #pixels to the final image object in 8-bit format, we only have to access
+            #the reduced 'intermediate' file.
+            intermediate = Image.new(source.mode, (xscale*pixpdeg, yscale*pixpdeg))
+            #print("i will range from " + str(x) + " to " + str(x+xscale*pixpdeg))
+            #print("k will range from " + str(y) + " to " + str(y+ yscale*pixpdeg))
+            for i in range(0,xscale*pixpdeg):
+                for k in range(0,yscale*pixpdeg):
+                    #print("X: " + str(x))
+                    #print("Y: " + str(y))
+                    #print("X + i: " + str(x + i))
+                    #print("Y + k: " + str(y + k))
+                    newpixel = source.getpixel((x+i,y+k))
+                    intermediate.putpixel((i,k), newpixel)
+                    register.append(newpixel)
+
+            #Determine maximum and minimum 32-bit values of the receptive field and scale
+            #pixel brightness to make their respective values 256 and 1.
+            floor = min(register)
+            ceiling = max(register)
+
+            #Create final image data 'sink' with grayscale image mode and copy scaled
+            #data from the 'intermediate'' image.
+            sink = Image.new('L', (xscale*pixpdeg, yscale*pixpdeg))
+            for i in range(0,xscale*pixpdeg):
+                for k in range(0,yscale*pixpdeg):
+                    newpixel = map(floor, ceiling, intermediate.getpixel((i,k)))
+                    sink.putpixel((i,k), newpixel)
+
+            sink.save(destination_directory + 'SLDEM2015_512_' + str(abs(latitude))
+            + name[8] + '_' + str(abs(latitude + 1)) + name[8] + '_' +
+            str(longitude) + '_' + str(longitude + 1) + '.png')
+            #Confirm the last line, the saving of the 'sink' image, was executed.
+            print("Data succesfully saved for site " + str(sitenumber))
+
+        #By default, Image does not take more than a pretty limited number of pixels
+        #to protect itself from attacks. This command will alter that limit.
+        Image.MAX_IMAGE_PIXELS = 353894400
+
+        #Specify where the monster source file is.
+        source = origin + "Original data/Global maps/SLDEM2015_" + name + ".JP2"
+        #Pass the first longitude (west/east), the first latitude (south/north), append
+        #the site number.
+
+        cut(target_long, target_lat, site_number, source, origin, name, destination_directory)
+
     for item in os.listdir(origin):
-        if item == "Original data and scripts":
-            #print(origin + item)
+        if item == "Original data":
             item += "/"
             for area in  os.listdir(origin + item):
-                area += "/"
                 if area[0] != ".":
+                    area += "/"
                     for site_data in os.listdir(origin + item + area):
-                        site_data += "/"
-                        if (site_data[0:4] == "Near" or site_data[0:5] == "Ultra"):
+                        if (site_data[0:4] == "Near" or site_data[0:5] == "Ultra") and site_data.find("_") == -1:
+                            site_data += "/"
                             parent_directory = origin + item + area + site_data
-                            prefix = ''
-                            if site_data[0:4] == "Near":
-                                prefix = "NIR"
-                            elif site_data[0:5] == "Ultra":
-                                prefix = "UVV"
-
                             for file in os.listdir(parent_directory):
-                                if file.endswith(".tif") or file.endswith(".png"):
-                                    if file[0:3] != "UVV" and file[0:3] != "NIR":
-                                    #if file[0:3] != "UVV" or file[0:3] != "NIR":
-                                        #im = Image.open(parent_directory + file)
-                                        #im.save(parent_directory + file[3:])
-                                        #os.remove(parent_directory + file)
-                                        os.rename(parent_directory + file, parent_directory + prefix + file)
-                                        #if file.find('mosaic') != -1:
-                                            #print("Incorrect label:" + file)
-                                            #print("Location:" + parent_directory)
+                                if file[-4:] == ".map":
+                                    target_long, target_lat, site_number, name = coordinates(parent_directory, file)
+
+                                    destination_directory = origin + item + name + '/' + 'SLDEM2015, site ' + str(site_number)
+                                    if not path.isdir(destination_directory):
+                                        os.mkdir(destination_directory)
+                                        destination_directory += '/'
+                                        altmap(target_long, target_lat, site_number, name, origin, destination_directory)
+
+def sort(origin):
+    #Input: The project's file; the "Original data" file has to be
+    #an immediate child.
+    #Output: None.
+
+    def coordinates(parent, file):
+        #Input:
+        #Output:
+
+        def id_site(string):
+            return string[string.find('site') + 5: -1]
+
+        def expand(number, div, dig):
+            string1 = str(int(abs(div*(number//div))))
+            string2 = str(int(abs(div*(number//div + 1))))
+            while len(string1) < dig:
+                string1 = '0' + string1
+            while len(string2) < dig:
+                string2 = '0' + string2
+
+            return string1, string2
+
+
+        target_long = ''
+        target_lat = ''
+        with open(parent + file, 'r') as content:
+            content = content.readlines()
+            line6 = content[6].strip() + " "
+            target_lat = float(line6[line6.find("=") + 2:-1])
+            line8 = content[8].strip() + " "
+            target_long = float(line8[line8.find("=") + 2:-1])
+        if target_long < 0:
+            target_long += 360
+
+        f_lat, s_lat = expand(target_lat, 30, 2)
+        f_long, s_long = expand(target_long, 45, 3)
+
+        northsouth = ''
+        if target_lat < 0:
+            NS = 'S'
+        else:
+            NS = 'N'
+
+        name = '512_' + f_lat + NS + '_' + s_lat + NS + '_'  + f_long + '_' + s_long
+        return target_long, target_lat, id_site(parent), name
+
+    for item in os.listdir(origin):
+        if item == "Original data":
+            item += "/"
+            for area in  os.listdir(origin + item):
+                if area == "Sort":
+                    area += "/"
+                    for site_data in os.listdir(origin + item + area):
+                        if site_data[0:4] == "Near" or site_data[0:5] == "Ultra":
+                            site_data += "/"
+                            parent_directory = origin + item + area + site_data
+                            for file in os.listdir(parent_directory):
+                                if file[-4:] == ".map":
+                                    target_long, target_lat, site_number, name = coordinates(parent_directory, file)
+
+                                    shutil.move(parent_directory[:-1], origin + item + name + '/' + site_data[:-1])
 
 origin = "/Users/santi/Documents/Semestre 1-2-3/MR3038- Estancia de investigación/Proyectos/Data fusion in lunar environment/Data workspace/"
 training_image_size = 420
 alarmV = True
 replace_mosaics = False
 
+print("Organizing your new data...")
+sort(origin)
+alarm(alarmV)
+
+print("Extracting missing altitude maps...")
+all_alts(origin)
+alarm(alarmV)
 
 print("Begin preprocessing images by removing dead pixels and maximizing contrast...")
 preprocessing(origin)
@@ -559,11 +766,6 @@ alarm(alarmV)
 print("")
 print("Begin creating mosaics of site data...")
 mosaic_create(origin, replace_mosaics)
-alarm(alarmV)
-
-print("")
-print("Make sure all files are correctly labelled, specially mosaic files.")
-prefix_labeller(origin)
 alarm(alarmV)
 
 print("")
