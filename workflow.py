@@ -540,10 +540,11 @@ def all_alts(origin):
         target_lat = ''
         with open(parent + file, 'r') as content:
             content = content.readlines()
-            line6 = content[6].strip() + " "
-            target_lat = float(line6[line6.find("=") + 2:-1])
-            line8 = content[8].strip() + " "
-            target_long = float(line8[line8.find("=") + 2:-1])
+            for i in range(0,len(content)):
+                if content[i].strip().find("MinimumLatitude") != -1:
+                    target_lat = float(content[i][content[i].find("=") + 2:-1])
+                if content[i].strip().find("MinimumLongitude") != -1:
+                    target_long = float(content[i][content[i].find("=") + 2:-1])
         if target_long < 0:
             target_long += 360
 
@@ -711,10 +712,11 @@ def sort(origin):
         target_lat = ''
         with open(parent + file, 'r') as content:
             content = content.readlines()
-            line6 = content[6].strip() + " "
-            target_lat = float(line6[line6.find("=") + 2:-1])
-            line8 = content[8].strip() + " "
-            target_long = float(line8[line8.find("=") + 2:-1])
+            for i in range(0,len(content)):
+                if content[i].strip().find("MinimumLatitude") != -1:
+                    target_lat = float(content[i][content[i].find("=") + 2:-1])
+                if content[i].strip().find("MinimumLongitude") != -1:
+                    target_long = float(content[i][content[i].find("=") + 2:-1])
         if target_long < 0:
             target_long += 360
 
@@ -743,8 +745,11 @@ def sort(origin):
                             for file in os.listdir(parent_directory):
                                 if file[-4:] == ".map":
                                     target_long, target_lat, site_number, name = coordinates(parent_directory, file)
-
-                                    shutil.move(parent_directory[:-1], origin + item + name + '/' + site_data[:-1])
+                                    if path.isdir(origin + item + name):
+                                        shutil.move(parent_directory[:-1], origin + item + name + '/' + site_data[:-1])
+                                    else:
+                                        os.mkdir(origin + item + name)
+                                        shutil.move(parent_directory[:-1], origin + item + name + '/' + site_data[:-1])
 
 origin = "/Users/santi/Documents/Semestre 1-2-3/MR3038- Estancia de investigación/Proyectos/Data fusion in lunar environment/Data workspace/"
 training_image_size = 420
