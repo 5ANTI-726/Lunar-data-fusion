@@ -1,5 +1,5 @@
 # Lunar-data-fusion
-Deep learning model for lunar feature recognition, data preprocessing and automated database creation for nonexclusive use with the NASA-USGS PILOT platform.
+Deep learning model for lunar feature recognition, data preprocessing and automated database creation for nonexclusive use with the NASA-USGS PILOT platform (https://pilot.wr.usgs.gov).
 
 The MATLAB code is coming.
 
